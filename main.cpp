@@ -5,6 +5,11 @@
 constexpr int SCR_H = 500;
 constexpr int SCR_W = 500;
 
+constexpr int MAP_W = 25;
+constexpr int MAP_H = 25;
+
+constexpr float TILE_W = SCR_W / MAP_W;
+constexpr float TILE_H = SCR_H / MAP_H;
 
 struct point{
   float x, y;
@@ -50,11 +55,49 @@ void draw_points(SDL_Renderer* rend, const std::vector<point>& points){
   SDL_SetRenderDrawColor(rend,0,255,0,255);
 
   for(const auto &i: points){
-    SDL_RenderDrawPointF(rend, i.x, i.y);
+    //Convert polar coordinates to screen coords
+    
+    SDL_RenderDrawPointF(rend, i.x * TILE_W, SCR_H - (i.y * TILE_H));
     
   }
 
 }
+
+void line_of_best_fit(SDL_Renderer *rend, const std::vector<point>& points){
+  float sumx = 0;
+  float sumy = 0;
+  float sumxy = 0;
+  float sumxx = 0;
+
+  for(const auto &i: points){
+    sumx += i.x;
+    sumy += i.y;
+    sumxy += i.x * i.y;
+    sumxx += i.x * i.x;
+  }
+
+  float m = ((points.size() * sumxy) - (sumx * sumy)) / ((points.size() * sumxx) - (sumx * sumx));
+
+  float b = (sumy - (m * sumx)) / points.size();
+
+  auto line_function = [&](float x){
+    float y = m*x + b;
+
+    return y;
+  };
+
+
+  SDL_SetRenderDrawColor(rend, 255, 0, 0, 255);
+  SDL_RenderDrawLine(rend, 0 * TILE_W, SCR_H - (line_function(0) * TILE_H)
+		     , (MAP_W - 1) * TILE_W, SCR_H - (line_function(MAP_W - 1) * TILE_H));
+
+}
+
+//template <typename F>
+//void plot_line(SDL_Renderer *rend, F&& line_function){
+
+  
+  
 
 int main(){
 
@@ -73,15 +116,16 @@ int main(){
     return 1;
   };
 
-  auto points = gen_points(0,250, 10, 0);
+  auto points = gen_points(0, 25, MAP_W, 1);
   
 
   while(running()){
     SDL_SetRenderDrawColor(rend, 0, 0, 0, 255);
     SDL_RenderClear(rend);
-
+    
 
     draw_points(rend, points);
+    line_of_best_fit(rend, points);
     
     SDL_RenderPresent(rend);
   }
@@ -89,6 +133,8 @@ int main(){
   for(const auto &i: points){
     std::cout << i.x << "\n";
   }
+
+  //std::cout << line_of_best_fit(points) << "\n";
 
 
   SDL_DestroyWindow(win);
